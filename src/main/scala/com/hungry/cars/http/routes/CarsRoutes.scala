@@ -3,7 +3,10 @@ package com.hungry.cars.http.routes
 import cats.effect.ContextShift
 import cats.effect.IO
 import cats.effect.Timer
-import com.hungry.cars.http.in.{CreateCarRequest, UpdateCarRequest}
+import com.hungry.cars.domain.error.CarsError.CarAlreadyExists
+import com.hungry.cars.domain.error.CarsError._
+import com.hungry.cars.http.in.CreateCarRequest
+import com.hungry.cars.http.in.UpdateCarRequest
 import com.hungry.cars.services.CarsService
 import org.http4s.EntityDecoder
 import org.http4s.HttpApp
@@ -24,15 +27,18 @@ class CarsRoutes(carsService: CarsService)(implicit cs: ContextShift[IO], timer:
         Ok(carsService.carsFromBrand(brand))
 
       case req @ POST -> Root / "cars" =>
-        for {
+        (for {
           createCarRequest <- req.as[CreateCarRequest]
-          response <- Created(carsService.create(createCarRequest))
-        } yield response
+          response         <- Created(carsService.create(createCarRequest))
+        } yield response).handleErrorWith {
+          case carAlreadyExists: CarAlreadyExists => Conflict(carAlreadyExists)
+          case _: Exception                       => InternalServerError()
+        }
 
-      case req @ PATCH -> Root / "cars"  =>
+      case req @ PATCH -> Root / "cars" =>
         for {
           updateCarRequest <- req.as[UpdateCarRequest]
-          response <- Ok(carsService.update(updateCarRequest))
+          response         <- Ok(carsService.update(updateCarRequest))
         } yield response
 
     }

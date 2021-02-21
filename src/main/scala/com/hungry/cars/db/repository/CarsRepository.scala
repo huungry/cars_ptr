@@ -8,11 +8,11 @@ import doobie.implicits._
 
 trait CarsRepository {
 
-  def doesCarExists(brand: String, model: String): Boolean
+  def doesCarExists(brand: String, model: String): IO[Boolean]
 
   def findByBrand(brand: String): IO[List[Car]]
 
-  def findByBrandAndModel(brand: String, model: String): IO[List[Car]]
+  def findByBrandAndModel(brand: String, model: String): IO[Option[Car]]
 
   def create(car: Car): IO[Unit]
 
@@ -21,35 +21,34 @@ trait CarsRepository {
 
 class CarsRepositoryDoobie(xa: Transactor[IO]) extends CarsRepository {
 
-  def doesCarExists(brand: String, model: String): Boolean = {
+  def doesCarExists(brand: String, model: String): IO[Boolean] = {
       sql"""
       select
-      exists(SELECT ID, BRAND, MODEL, PRICE)
+      count(*)
       from CARS
-      where brand = $brand AND model = $model;
+      where brand = $brand AND model = $model
       """
-        .query[Boolean]
+        .query[Int]
         .to[List]
         .transact(xa)
-        .unsafeRunSync()
-        .exists(identity)
+        .map(_.headOption.exists(_ > 0))
     }
 
   def findByBrand(brand: String): IO[List[Car]] = {
     sql"""
-      SELECT ID, BRAND, MODEL, PRICE from CARS where brand = $brand;
+      SELECT ID, BRAND, MODEL, PRICE from CARS where brand = $brand
     """
       .query[Car]
       .to[List]
       .transact(xa)
   }
 
-  def findByBrandAndModel(brand: String, model: String): IO[List[Car]] = {
+  def findByBrandAndModel(brand: String, model: String): IO[Option[Car]] = {
     sql"""
-      SELECT ID, BRAND, MODEL, PRICE from CARS where brand = ${brand} AND model = ${model};
+      SELECT ID, BRAND, MODEL, PRICE from CARS where brand = $brand AND model = $model
     """
       .query[Car]
-      .to[List]
+      .option
       .transact(xa)
   }
 
@@ -60,7 +59,7 @@ class CarsRepositoryDoobie(xa: Transactor[IO]) extends CarsRepository {
       insert into cars
       (ID, BRAND, MODEL, PRICE)
       values
-      (${car.id.value}, ${car.brand}, ${car.model}, ${car.price});
+      (${car.id.value}, ${car.brand}, ${car.model}, ${car.price})
     """
       .update.run
       .transact(xa)
@@ -75,7 +74,7 @@ class CarsRepositoryDoobie(xa: Transactor[IO]) extends CarsRepository {
       update cars
       set price = ${car.price}
       where
-      brand = ${car.brand} and model = ${car.model};
+      brand = ${car.brand} and model = ${car.model}
     """
       .update.run
       .transact(xa)
