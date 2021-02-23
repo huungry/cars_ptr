@@ -1,12 +1,14 @@
 package com.hungry.cars.db.repository
 
 import cats.effect.IO
-import com.hungry.cars.domain.Car
+import com.hungry.cars.domain.{Car, CarId}
 import com.hungry.cars.http.in.CreateCarRequest
 import doobie.Transactor
 import doobie.implicits._
 
 trait CarsRepository {
+
+  def doesCarExistsById(carId: CarId): IO[Option[Car]]
 
   def doesCarExists(brand: String, model: String): IO[Boolean]
 
@@ -33,6 +35,15 @@ class CarsRepositoryDoobie(xa: Transactor[IO]) extends CarsRepository {
         .transact(xa)
         .map(_.headOption.exists(_ > 0))
     }
+
+  override def doesCarExistsById(carId: CarId): IO[Option[Car]] = {
+    sql"""
+      SELECT ID, BRAND, MODEL, PRICE from CARS where ID = ${carId.value}
+    """
+      .query[Car]
+      .option
+      .transact(xa)
+  }
 
   def findByBrand(brand: String): IO[List[Car]] = {
     sql"""
@@ -72,9 +83,9 @@ class CarsRepositoryDoobie(xa: Transactor[IO]) extends CarsRepository {
 
     sql"""
       update cars
-      set price = ${car.price}
+      set brand = ${car.brand}, model = ${car.model}, price = ${car.price}
       where
-      brand = ${car.brand} and model = ${car.model}
+      ID = ${car.id.value}
     """
       .update.run
       .transact(xa)
