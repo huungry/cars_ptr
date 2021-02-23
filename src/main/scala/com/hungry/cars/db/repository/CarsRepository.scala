@@ -8,13 +8,13 @@ import doobie.implicits._
 
 trait CarsRepository {
 
-  def doesCarExistsById(carId: CarId): IO[Option[Car]]
-
   def doesCarExists(brand: String, model: String): IO[Boolean]
 
   def findByBrand(brand: String): IO[List[Car]]
 
   def findByBrandAndModel(brand: String, model: String): IO[Option[Car]]
+
+  def findCarExistsById(carId: CarId): IO[Option[Car]]
 
   def create(car: Car): IO[Unit]
 
@@ -36,14 +36,7 @@ class CarsRepositoryDoobie(xa: Transactor[IO]) extends CarsRepository {
         .map(_.headOption.exists(_ > 0))
     }
 
-  override def doesCarExistsById(carId: CarId): IO[Option[Car]] = {
-    sql"""
-      SELECT ID, BRAND, MODEL, PRICE from CARS where ID = ${carId.value}
-    """
-      .query[Car]
-      .option
-      .transact(xa)
-  }
+
 
   def findByBrand(brand: String): IO[List[Car]] = {
     sql"""
@@ -57,6 +50,15 @@ class CarsRepositoryDoobie(xa: Transactor[IO]) extends CarsRepository {
   def findByBrandAndModel(brand: String, model: String): IO[Option[Car]] = {
     sql"""
       SELECT ID, BRAND, MODEL, PRICE from CARS where brand = $brand AND model = $model
+    """
+      .query[Car]
+      .option
+      .transact(xa)
+  }
+
+  override def findCarExistsById(carId: CarId): IO[Option[Car]] = {
+    sql"""
+      SELECT ID, BRAND, MODEL, PRICE from CARS where ID = ${carId.value}
     """
       .query[Car]
       .option

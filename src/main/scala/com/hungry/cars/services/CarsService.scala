@@ -37,7 +37,7 @@ class CarsService(carsRepository: CarsRepository) {
     val request = updateCarRequest.toCar(CarId(id))
 
     for {
-    maybeCar <- carsRepository.doesCarExistsById(request.id)
+    maybeCar <- carsRepository.findCarExistsById(request.id)
     _ <- maybeCar.map(_ => IO.pure(())).getOrElse(IO.raiseError(CarNotFound(request.id)))
     _ <- carsRepository.update(request)
     } yield ()
