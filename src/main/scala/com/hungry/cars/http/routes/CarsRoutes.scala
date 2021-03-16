@@ -26,22 +26,22 @@ class CarsRoutes(carsService: CarsService)(implicit cs: ContextShift[IO], timer:
       case GET -> Root / "cars" / brand =>
         Ok(carsService.carsFromBrand(brand))
 
-      case req@POST -> Root / "cars" =>
+      case req @ POST -> Root / "cars" =>
         (for {
           createCarRequest <- req.as[CreateCarRequest]
-          response <- Created(carsService.create(createCarRequest))
+          response         <- Created(carsService.create(createCarRequest))
         } yield response).handleErrorWith {
           case carAlreadyExists: CarAlreadyExists => Conflict(carAlreadyExists)
-          case _: Exception => InternalServerError()
+          case _: Exception                       => InternalServerError()
         }
 
-      case req@PATCH -> Root / "cars" / id =>
+      case req @ PATCH -> Root / "cars" / id =>
         (for {
           updateCarRequest <- req.as[UpdateCarRequest]
-          response <- Ok(carsService.update(id, updateCarRequest))
+          response         <- Ok(carsService.update(id, updateCarRequest))
         } yield response).handleErrorWith {
-          case carNotFound: CarNotFound => Conflict(carNotFound)
-          case _: Exception => InternalServerError()
+          case carNotFound: CarNotFound => NotFound(carNotFound)
+          case _: Exception             => InternalServerError()
         }
     }
     .orNotFound

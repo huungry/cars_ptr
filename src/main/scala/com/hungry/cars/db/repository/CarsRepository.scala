@@ -14,7 +14,9 @@ trait CarsRepository {
 
   def findByBrandAndModel(brand: String, model: String): IO[Option[Car]]
 
-  def findCarExistsById(carId: CarId): IO[Option[Car]]
+  def findCar(carId: CarId): IO[Option[Car]]
+
+  def getCar(carId: CarId): IO[List[Car]]
 
   def create(car: Car): IO[Unit]
 
@@ -24,19 +26,17 @@ trait CarsRepository {
 class CarsRepositoryDoobie(xa: Transactor[IO]) extends CarsRepository {
 
   def doesCarExists(brand: String, model: String): IO[Boolean] = {
-      sql"""
+    sql"""
       select
       count(*)
       from CARS
       where brand = $brand AND model = $model
       """
-        .query[Int]
-        .to[List]
-        .transact(xa)
-        .map(_.headOption.exists(_ > 0))
-    }
-
-
+      .query[Int]
+      .to[List]
+      .transact(xa)
+      .map(_.headOption.exists(_ > 0))
+  }
 
   def findByBrand(brand: String): IO[List[Car]] = {
     sql"""
@@ -56,12 +56,21 @@ class CarsRepositoryDoobie(xa: Transactor[IO]) extends CarsRepository {
       .transact(xa)
   }
 
-  override def findCarExistsById(carId: CarId): IO[Option[Car]] = {
+  override def findCar(carId: CarId): IO[Option[Car]] = {
     sql"""
       SELECT ID, BRAND, MODEL, PRICE from CARS where ID = ${carId.value}
     """
       .query[Car]
       .option
+      .transact(xa)
+  }
+
+  override def getCar(carId: CarId): IO[List[Car]] = {
+    sql"""
+      SELECT ID, BRAND, MODEL, PRICE from CARS where ID = ${carId.value}
+    """
+      .query[Car]
+      .to[List]
       .transact(xa)
   }
 
@@ -73,8 +82,7 @@ class CarsRepositoryDoobie(xa: Transactor[IO]) extends CarsRepository {
       (ID, BRAND, MODEL, PRICE)
       values
       (${car.id.value}, ${car.brand}, ${car.model}, ${car.price})
-    """
-      .update.run
+    """.update.run
       .transact(xa)
       .as(())
   }
@@ -88,8 +96,7 @@ class CarsRepositoryDoobie(xa: Transactor[IO]) extends CarsRepository {
       set brand = ${car.brand}, model = ${car.model}, price = ${car.price}
       where
       ID = ${car.id.value}
-    """
-      .update.run
+    """.update.run
       .transact(xa)
       .as(())
   }

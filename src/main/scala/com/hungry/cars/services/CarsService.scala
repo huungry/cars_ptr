@@ -28,19 +28,20 @@ class CarsService(carsRepository: CarsRepository) {
     for {
       maybeCar <- carsRepository.findByBrandAndModel(brand, model)
       _        <- maybeCar.map(_ => IO.raiseError(CarAlreadyExists(brand, model))).getOrElse(IO.pure(()))
-      _ <- carsRepository.create(createCarRequest.toCar)
+      _        <- carsRepository.create(createCarRequest.toCar)
     } yield ()
   }
 
   def update(id: String, updateCarRequest: UpdateCarRequest): IO[Unit] = {
 
-    val request = updateCarRequest.toCar(CarId(id))
+    val requestedCarId = CarId(id)
 
     for {
-    maybeCar <- carsRepository.findCarExistsById(request.id)
-    _ <- maybeCar.map(_ => IO.pure(())).getOrElse(IO.raiseError(CarNotFound(request.id)))
-    _ <- carsRepository.update(request)
+      maybeCar <- carsRepository.findCar(requestedCarId)
+      _        <- maybeCar.map(_ => IO.pure(())).getOrElse(IO.raiseError(CarNotFound(requestedCarId)))
+      _        <- carsRepository.update(updateCarRequest.updateCar(requestedCarId, maybeCar, updateCarRequest))
     } yield ()
 
   }
+
 }
