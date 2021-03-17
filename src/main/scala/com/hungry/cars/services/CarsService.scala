@@ -2,9 +2,12 @@ package com.hungry.cars.services
 
 import cats.effect.IO
 import com.hungry.cars.db.repository.CarsRepository
-import com.hungry.cars.domain.error.CarsError.{CarAlreadyExists, CarNotFound}
-import com.hungry.cars.domain.{Car, CarId}
-import com.hungry.cars.http.in.{CreateCarRequest, UpdateCarRequest}
+import com.hungry.cars.domain.Car
+import com.hungry.cars.domain.CarId
+import com.hungry.cars.domain.error.CarsError.CarAlreadyExists
+import com.hungry.cars.domain.error.CarsError.CarNotFound
+import com.hungry.cars.http.in.CreateCarRequest
+import com.hungry.cars.http.in.UpdateCarRequest
 
 class CarsService(carsRepository: CarsRepository) {
 
@@ -32,16 +35,32 @@ class CarsService(carsRepository: CarsRepository) {
     } yield ()
   }
 
-  def update(id: String, updateCarRequest: UpdateCarRequest): IO[Unit] = {
-
-    val requestedCarId = CarId(id)
-
+  def update(carId: CarId, updateCarRequest: UpdateCarRequest): IO[Unit] = {
     for {
-      maybeCar <- carsRepository.findCar(requestedCarId)
-      _        <- maybeCar.map(_ => IO.pure(())).getOrElse(IO.raiseError(CarNotFound(requestedCarId)))
-      _        <- carsRepository.update(updateCarRequest.updateCar(requestedCarId, maybeCar, updateCarRequest))
+      maybeCar <- carsRepository.findCar(carId)
+      car      <- maybeCar.map(car => IO.pure(car)).getOrElse(IO.raiseError(CarNotFound(carId)))
+      updatedCar = updateCar(car, updateCarRequest)
+      _ <- carsRepository.update(updatedCar)
     } yield ()
+  }
 
+  private def updateCar(car: Car, updateCarRequest: UpdateCarRequest): Car = {
+    type UpdateCarOperation = Car => Option[Car]
+
+    val updateBrand: UpdateCarOperation = (carToUpdate: Car) =>
+      updateCarRequest.brand.map(brand => carToUpdate.copy(brand = brand))
+
+    val updateModel: UpdateCarOperation = (carToUpdate: Car) =>
+      updateCarRequest.model.map(model => carToUpdate.copy(model = model))
+
+    val updatePrice: UpdateCarOperation = (carToUpdate: Car) =>
+      updateCarRequest.price.map(price => carToUpdate.copy(price = price))
+
+    val updates: List[UpdateCarOperation] = List(updateBrand, updateModel, updatePrice)
+
+    updates.foldLeft(car) { (updatedCar: Car, update: UpdateCarOperation) =>
+      update(updatedCar).getOrElse(updatedCar)
+    }
   }
 
 }

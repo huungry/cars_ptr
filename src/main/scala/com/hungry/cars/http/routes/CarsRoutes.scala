@@ -3,6 +3,7 @@ package com.hungry.cars.http.routes
 import cats.effect.ContextShift
 import cats.effect.IO
 import cats.effect.Timer
+import com.hungry.cars.domain.CarId
 import com.hungry.cars.domain.error.CarsError.CarAlreadyExists
 import com.hungry.cars.domain.error.CarsError._
 import com.hungry.cars.http.in.CreateCarRequest
@@ -36,9 +37,10 @@ class CarsRoutes(carsService: CarsService)(implicit cs: ContextShift[IO], timer:
         }
 
       case req @ PATCH -> Root / "cars" / id =>
+        val carId = CarId(id)
         (for {
           updateCarRequest <- req.as[UpdateCarRequest]
-          response         <- Ok(carsService.update(id, updateCarRequest))
+          response         <- Ok(carsService.update(carId, updateCarRequest))
         } yield response).handleErrorWith {
           case carNotFound: CarNotFound => NotFound(carNotFound)
           case _: Exception             => InternalServerError()
