@@ -49,3 +49,5 @@ class CarsRoutes(carsService: CarsService)(implicit cs: ContextShift[IO], timer:
     .orNotFound
 
 }
+
+// mapisz mape, flatmape i filter za pomocą foldlefta
