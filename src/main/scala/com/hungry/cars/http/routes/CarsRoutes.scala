@@ -3,7 +3,6 @@ package com.hungry.cars.http.routes
 import cats.effect.ContextShift
 import cats.effect.IO
 import cats.effect.Timer
-import com.hungry.cars.domain.CarId
 import com.hungry.cars.domain.error.CarsError.CarAlreadyExists
 import com.hungry.cars.domain.error.CarsError._
 import com.hungry.cars.http.in.CreateCarRequest
@@ -28,23 +27,27 @@ class CarsRoutes(carsService: CarsService)(implicit cs: ContextShift[IO], timer:
         Ok(carsService.carsFromBrand(brand))
 
       case req @ POST -> Root / "cars" =>
-        (for {
+        for {
           createCarRequest <- req.as[CreateCarRequest]
-          response         <- Created(carsService.create(createCarRequest))
-        } yield response).handleErrorWith {
-          case carAlreadyExists: CarAlreadyExists => Conflict(carAlreadyExists)
-          case _: Exception                       => InternalServerError()
-        }
+          response <- carsService
+                        .create(createCarRequest)
+                        .flatMap { either: Either[CarAlreadyExists, Unit] =>
+                          either match {
+                            case Left(carAlreadyExists: CarAlreadyExists) => Conflict(carAlreadyExists)
+                            case Right(_)                                 => Created()
+                          }
+                        }
+        } yield response
 
-      case req @ PATCH -> Root / "cars" / id =>
-        val carId = CarId(id)
-        (for {
-          updateCarRequest <- req.as[UpdateCarRequest]
-          response         <- Ok(carsService.update(carId, updateCarRequest))
-        } yield response).handleErrorWith {
-          case carNotFound: CarNotFound => NotFound(carNotFound)
-          case _: Exception             => InternalServerError()
-        }
+//      case req @ PATCH -> Root / "cars" / id =>
+//        val carId = CarId(id)
+//        (for {
+//          updateCarRequest <- req.as[UpdateCarRequest]
+//          response         <- Ok(carsService.update(carId, updateCarRequest))
+//        } yield response).handleErrorWith {
+//          case carNotFound: CarNotFound => NotFound(carNotFound)
+//          case _: Exception             => InternalServerError()
+//        }
     }
     .orNotFound
 
