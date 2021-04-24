@@ -1,8 +1,8 @@
 package com.hungry.cars.db.repository
 
 import cats.effect.IO
-import com.hungry.cars.domain.{Car, CarId}
-import com.hungry.cars.http.in.CreateCarRequest
+import com.hungry.cars.domain.Car
+import com.hungry.cars.domain.CarId
 import doobie.Transactor
 import doobie.implicits._
 
@@ -27,10 +27,10 @@ class CarsRepositoryDoobie(xa: Transactor[IO]) extends CarsRepository {
 
   def doesCarExists(brand: String, model: String): IO[Boolean] = {
     sql"""
-      select
-      count(*)
-      from CARS
-      where brand = $brand AND model = $model
+      SELECT
+      COUNT(*)
+      FROM CARS
+      WHERE BRAND = $brand AND MODEL = $model
       """
       .query[Int]
       .to[List]
@@ -40,7 +40,7 @@ class CarsRepositoryDoobie(xa: Transactor[IO]) extends CarsRepository {
 
   def findByBrand(brand: String): IO[List[Car]] = {
     sql"""
-      SELECT ID, BRAND, MODEL, PRICE from CARS where brand = $brand
+      SELECT ID, BRAND, MODEL, PRICE FROM CARS WHERE BRAND = $brand
     """
       .query[Car]
       .to[List]
@@ -78,9 +78,9 @@ class CarsRepositoryDoobie(xa: Transactor[IO]) extends CarsRepository {
     println(car.id.value, car.brand, car.model, car.price)
 
     sql"""
-      insert into cars
+      INSERT INTO CARS
       (ID, BRAND, MODEL, PRICE)
-      values
+      VALUES
       (${car.id.value}, ${car.brand}, ${car.model}, ${car.price})
     """.update.run
       .transact(xa)
@@ -92,9 +92,9 @@ class CarsRepositoryDoobie(xa: Transactor[IO]) extends CarsRepository {
     println(car.id.value, car.brand, car.model, car.price)
 
     sql"""
-      update cars
-      set brand = ${car.brand}, model = ${car.model}, price = ${car.price}
-      where
+      UPDATE CARS
+      SET BRAND = ${car.brand}, MODEL = ${car.model}, PRICE = ${car.price}
+      WHERE
       ID = ${car.id.value}
     """.update.run
       .transact(xa)
