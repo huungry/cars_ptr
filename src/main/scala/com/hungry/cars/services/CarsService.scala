@@ -2,9 +2,12 @@ package com.hungry.cars.services
 
 import cats.effect.IO
 import com.hungry.cars.db.repository.CarsRepository
+import com.hungry.cars.domain.Car
+import com.hungry.cars.domain.CarId
 import com.hungry.cars.domain.error.CarsError.CarAlreadyExists
-import com.hungry.cars.domain.{Car, CarId}
-import com.hungry.cars.http.in.{CreateCarRequest, UpdateCarRequest}
+import com.hungry.cars.domain.error.CarsError.CarNotFound
+import com.hungry.cars.http.in.CreateCarRequest
+import com.hungry.cars.http.in.UpdateCarRequest
 
 class CarsService(carsRepository: CarsRepository) {
 
@@ -25,41 +28,39 @@ class CarsService(carsRepository: CarsRepository) {
 
     val CreateCarRequest(brand, model, _) = createCarRequest
 
-//    carsRepository.findByBrandAndModel(brand, model).flatMap { maybeCar: Option[Car] =>
-//      val action = if (maybeCar.isDefined) IO.raiseError(CarAlreadyExists(brand, model))
-//      else IO.pure(())
-//
-//      val action2 = action.flatMap { _ =>
-//        carsRepository.create(createCarRequest.toCar)
-//      }
-//
-//      action2
-//    }
-
     for {
       maybeCar <- carsRepository.findByBrandAndModel(brand, model)
       _        <- maybeCar.map(_ => IO.raiseError(CarAlreadyExists(brand, model))).getOrElse(IO.pure(()))
-      _ <- carsRepository.create(createCarRequest.toCar)
+      _        <- carsRepository.create(createCarRequest.toCar)
     } yield ()
   }
 
-  def update(updateCarRequest: UpdateCarRequest): IO[Unit] = {
-    println(s"Got $updateCarRequest, new price: ${updateCarRequest.price} to update the car")
-
+  def update(carId: CarId, updateCarRequest: UpdateCarRequest): IO[Unit] = {
     for {
-      carExists <- carsRepository.doesCarExists(updateCarRequest.brand, updateCarRequest.model)
-      car <- if (carExists) {
-               toCar(updateCarRequest.brand, updateCarRequest.model, updateCarRequest.price)
-             } else { IO.raiseError(new Exception("There is no such car!")) }
-      _ <- carsRepository.update(car)
+      maybeCar <- carsRepository.findCar(carId)
+      car      <- maybeCar.map(car => IO.pure(car)).getOrElse(IO.raiseError(CarNotFound(carId)))
+      updatedCar = updateCar(car, updateCarRequest)
+      _ <- carsRepository.update(updatedCar)
     } yield ()
   }
 
-  /* private def errorIfCarExists(brand: String, model: String): IO[Unit] = {
-   *
-   * println(carsRepository.doesCarExists(brand, model).unsafeRunSync()) // logging
-   *
-   * for { exists <- carsRepository.doesCarExists(brand, model) _ <- if (exists.nonEmpty) IO.raiseError(new
-   * Exception("Already exists")) else IO.unit } yield () } */
+  private def updateCar(car: Car, updateCarRequest: UpdateCarRequest): Car = {
+    type UpdateCarOperation = Car => Option[Car]
+
+    val updateBrand: UpdateCarOperation = (carToUpdate: Car) =>
+      updateCarRequest.brand.map(brand => carToUpdate.copy(brand = brand))
+
+    val updateModel: UpdateCarOperation = (carToUpdate: Car) =>
+      updateCarRequest.model.map(model => carToUpdate.copy(model = model))
+
+    val updatePrice: UpdateCarOperation = (carToUpdate: Car) =>
+      updateCarRequest.price.map(price => carToUpdate.copy(price = price))
+
+    val updates: List[UpdateCarOperation] = List(updateBrand, updateModel, updatePrice)
+
+    updates.foldLeft(car) { (updatedCar: Car, update: UpdateCarOperation) =>
+      update(updatedCar).getOrElse(updatedCar)
+    }
+  }
 
 }
