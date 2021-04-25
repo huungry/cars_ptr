@@ -5,9 +5,7 @@ import io.circe.Encoder
 import io.circe.Json
 import io.circe.syntax._
 
-import scala.util.control.NoStackTrace
-
-sealed trait CarsError extends NoStackTrace {
+sealed trait CarsError {
   def code: String
   def message: String
 }
