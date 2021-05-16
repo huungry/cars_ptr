@@ -80,17 +80,7 @@ final class CarsServiceTest
     val requestedModel       = updateCarRequest.model.getOrElse(dbModel)
     val requestedPrice: Long = updateCarRequest.price.getOrElse(dbPrice)
 
-    val updatedCar: Car = updateCarRequest match {
-      case UpdateCarRequest(Some(_), Some(_), Some(_)) =>
-        Car(id, requestedBrand, requestedModel, requestedPrice)
-      case UpdateCarRequest(Some(_), Some(_), None) => Car(id, requestedBrand, requestedModel, dbPrice)
-      case UpdateCarRequest(Some(_), None, Some(_)) => Car(id, requestedBrand, dbModel, requestedPrice)
-      case UpdateCarRequest(None, Some(_), Some(_)) => Car(id, dbBrand, requestedModel, requestedPrice)
-      case UpdateCarRequest(Some(_), None, None)    => Car(id, requestedBrand, dbModel, dbPrice)
-      case UpdateCarRequest(None, Some(_), None)    => Car(id, dbBrand, requestedModel, dbPrice)
-      case UpdateCarRequest(None, None, Some(_))    => Car(id, dbBrand, dbModel, requestedPrice)
-      case UpdateCarRequest(None, None, None)       => Car(id, dbBrand, dbModel, dbPrice)
-    }
+    val updatedCar: Car = Car(id, requestedBrand, requestedModel, requestedPrice)
 
     carsRepository.findCar(id).unsafeRunSync().map(car => car).getOrElse("CarNotFound") shouldBe updatedCar
   }
