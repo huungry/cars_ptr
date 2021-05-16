@@ -4,10 +4,9 @@ import cats.data.EitherT
 import cats.effect.IO
 import cats.implicits._
 import com.hungry.cars.db.repository.CarsRepository
-import com.hungry.cars.domain.Car
-import com.hungry.cars.domain.error.CarsError.CarAlreadyExists
-import com.hungry.cars.http.in.CreateCarRequest
-import com.hungry.cars.http.in.UpdateCarRequest
+import com.hungry.cars.domain.error.CarsError.{CarAlreadyExists, CarNotFound}
+import com.hungry.cars.domain.{Car, CarId}
+import com.hungry.cars.http.in.{CreateCarRequest, UpdateCarRequest}
 
 class CarsService(carsRepository: CarsRepository) {
 
@@ -35,32 +34,25 @@ class CarsService(carsRepository: CarsRepository) {
 
     effect.value
 
-//    carsRepository.findByBrandAndModel(brand, model).flatMap { maybeCar: Option[Car] =>
-//      val either1: Either[CarAlreadyExists, Unit] =
-//        maybeCar
-//          .map(car => CarAlreadyExists(car.brand, car.model).asLeft)
-//          .getOrElse(().asRight)
-//
-////      val either2: Either[CarAlreadyExists, Unit] =
-////        Either
-////          .fromOption(maybeCar, ())
-////          .map(car => CarAlreadyExists(car.brand, car.model))
-////          .swap
-//
-//      val car = createCarRequest.toCar
-//      either1.fold(carAlreadyExists => IO.pure(carAlreadyExists.asLeft), _ => IO.pure(().asRight))
-//    }
-
   }
 
-//  def update(carId: CarId, updateCarRequest: UpdateCarRequest): IO[Unit] = {
-//    for {
-//      maybeCar <- carsRepository.findCar(carId)
-//      car      <- maybeCar.map(car => IO.pure(car)).getOrElse(IO.raiseError(CarNotFound(carId)))
-//      updatedCar = updateCar(car, updateCarRequest)
-//      _ <- carsRepository.update(updatedCar)
-//    } yield ()
-//  }
+  def update(carId: CarId, updateCarRequest: UpdateCarRequest): IO[Either[CarNotFound, Unit]] = {
+    println(s"Got $updateCarRequest to update the car")
+
+    type Err = CarNotFound
+
+    val effect: EitherT[IO, Err, Unit] = for {
+      dbCar <- EitherT.fromOptionF(
+                 carsRepository
+                   .findCar(carId),
+                 CarNotFound(carId)
+               )
+      car = updateCar(dbCar, updateCarRequest)
+      _ <- EitherT.liftF(carsRepository.update(car))
+    } yield ()
+
+    effect.value
+  }
 
   private def updateCar(car: Car, updateCarRequest: UpdateCarRequest): Car = {
     type UpdateCarOperation = Car => Option[Car]
