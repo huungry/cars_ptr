@@ -11,12 +11,10 @@ import com.hungry.cars.http.in.{CreateCarRequest, UpdateCarRequest}
 class CarsService(carsRepository: CarsRepository) {
 
   def carsFromBrand(brand: String): IO[List[Car]] = {
-    println(s"Searching cars from brand $brand")
     carsRepository.findByBrand(brand)
   }
 
   def create(createCarRequest: CreateCarRequest): IO[Either[CarAlreadyExists, Unit]] = {
-    println(s"Got $createCarRequest to create new car")
     type Err = CarAlreadyExists
 
     val CreateCarRequest(brand, model, _) = createCarRequest
@@ -33,11 +31,9 @@ class CarsService(carsRepository: CarsRepository) {
     } yield ()
 
     effect.value
-
   }
 
   def update(carId: CarId, updateCarRequest: UpdateCarRequest): IO[Either[CarNotFound, Unit]] = {
-    println(s"Got $updateCarRequest to update the car")
 
     type Err = CarNotFound
 
@@ -71,6 +67,20 @@ class CarsService(carsRepository: CarsRepository) {
     updates.foldLeft(car) { (updatedCar: Car, update: UpdateCarOperation) =>
       update(updatedCar).getOrElse(updatedCar)
     }
+  }
+
+  def delete(carId: CarId): IO[Either[CarNotFound, Unit]] = {
+    type Err = CarNotFound
+
+    val effect: EitherT[IO, Err, Unit] = for {
+      _ <- EitherT.fromOptionF(
+             carsRepository
+               .findCar(carId),
+             CarNotFound(carId)
+           )
+      _ <- EitherT.liftF(carsRepository.delete(carId))
+    } yield ()
+    effect.value
   }
 
 }

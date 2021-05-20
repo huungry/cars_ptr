@@ -1,12 +1,17 @@
 package com.hungry.cars.services
 
-import com.hungry.cars.db.repository.{CarsRepository, CarsRepositoryDoobie}
-import com.hungry.cars.domain.{Car, CarId}
+import com.hungry.cars.db.repository.CarsRepository
+import com.hungry.cars.db.repository.CarsRepositoryDoobie
+import com.hungry.cars.domain.Car
+import com.hungry.cars.domain.CarId
 import com.hungry.cars.helpers.DatabaseTest
-import com.hungry.cars.http.in.{CreateCarRequest, UpdateCarRequest}
+import com.hungry.cars.http.in.CreateCarRequest
+import com.hungry.cars.http.in.UpdateCarRequest
+import org.scalatest.BeforeAndAfterEach
+import org.scalatest.EitherValues
+import org.scalatest.OptionValues.convertOptionToValuable
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.{BeforeAndAfterEach, EitherValues}
 
 final class CarsServiceTest
     extends AnyFlatSpec
@@ -54,35 +59,56 @@ final class CarsServiceTest
 
   // UPDATE TESTS
 
-  private val fordUpdated                = Some("FordUpdated")
-  private val focusUpdated               = None
-  private val priceUpdated: Option[Long] = Some(999)
-  private val updateCarRequest           = UpdateCarRequest(fordUpdated, focusUpdated, priceUpdated)
+  private val fordUpdated      = Some("FordUpdated")
+  private val focusUpdated     = None
+  private val priceUpdated     = Some(999L)
+  private val updateCarRequest = UpdateCarRequest(fordUpdated, focusUpdated, priceUpdated)
 
   it should "update car" in {
 
     carsService.create(createCarRequest).unsafeRunSync().value
 
-    val dbBrand       = createCarRequest.brand
-    val dbModel       = createCarRequest.model
-    val dbPrice: Long = createCarRequest.price
+    val dbBrand = createCarRequest.brand
+    val dbModel = createCarRequest.model
+    val dbPrice = createCarRequest.price
 
     val id: CarId =
       carsRepository
         .findByBrandAndModel(fordBrand, focusModel)
         .unsafeRunSync()
         .map(_.id)
-        .getOrElse(CarId("IdNotFound"))
+        .value
 
     carsService.update(id, updateCarRequest).unsafeRunSync().value
 
-    val requestedBrand       = updateCarRequest.brand.getOrElse(dbBrand)
-    val requestedModel       = updateCarRequest.model.getOrElse(dbModel)
-    val requestedPrice: Long = updateCarRequest.price.getOrElse(dbPrice)
+    val requestedBrand = updateCarRequest.brand.getOrElse(dbBrand)
+    val requestedModel = updateCarRequest.model.getOrElse(dbModel)
+    val requestedPrice = updateCarRequest.price.getOrElse(dbPrice)
 
     val updatedCar: Car = Car(id, requestedBrand, requestedModel, requestedPrice)
 
-    carsRepository.findCar(id).unsafeRunSync().map(car => car).getOrElse("CarNotFound") shouldBe updatedCar
+    carsRepository.findCar(id).unsafeRunSync().value shouldBe updatedCar
+  }
+
+  it should "not update car if ID is invalid" in {
+    carsService.update(CarId("InvalidId"), updateCarRequest).unsafeRunSync().left.value
+  }
+
+  // DELETE TESTS
+
+  it should "delete car" in {
+    carsService.create(createCarRequest).unsafeRunSync().value
+
+    val id: CarId =
+      carsRepository
+        .findByBrandAndModel(fordBrand, focusModel)
+        .unsafeRunSync()
+        .map(_.id)
+        .value
+
+    carsService.delete(id).unsafeRunSync().value
+
+    carsRepository.findCar(id).unsafeRunSync().getOrElse("None") shouldBe "None"
   }
 
 }
