@@ -16,7 +16,6 @@ import org.http4s.implicits._
 import org.http4s.EntityDecoder
 import org.http4s.HttpApp
 import org.http4s.HttpRoutes
-import org.http4s.headers.`Accept-Patch`
 
 class CarsRoutes(carsService: CarsService)(implicit cs: ContextShift[IO], timer: Timer[IO]) {
 
