@@ -25,7 +25,7 @@ trait CarsRepository {
 
   def update(car: Car): IO[Unit]
 
-  def delete(carId: CarId): IO[Unit]
+  def markAsDeleted(carId: CarId): IO[Unit]
 }
 
 class CarsRepositoryDoobie(xa: Transactor[IO]) extends CarsRepository {
@@ -87,7 +87,7 @@ class CarsRepositoryDoobie(xa: Transactor[IO]) extends CarsRepository {
       (${car.id.value}, ${car.brand}, ${car.model}, ${car.price})
     """.update.run
       .transact(xa)
-      .as(())
+      .void
   }
 
   override def update(car: Car): IO[Unit] = {
@@ -98,21 +98,19 @@ class CarsRepositoryDoobie(xa: Transactor[IO]) extends CarsRepository {
       ID = ${car.id.value} 
     """.update.run
       .transact(xa)
-      .as(())
+      .void
   }
 
-  override def delete(carId: CarId): IO[Unit] = {
-
-    val instant = Instant.now()
+  override def markAsDeleted(carId: CarId): IO[Unit] = {
 
     sql"""
            UPDATE CARS
-           SET DELETED_AT = $instant
+           SET DELETED_AT = ${Instant.now()}
            WHERE
            ID = ${carId.value}
          """.update.run
       .transact(xa)
-      .as(())
+      .void
   }
 
 }

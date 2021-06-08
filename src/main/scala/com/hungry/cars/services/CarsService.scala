@@ -78,7 +78,7 @@ class CarsService(carsRepository: CarsRepository) {
                .findCar(carId),
              CarNotFound(carId)
            )
-      _ <- EitherT.liftF(carsRepository.delete(carId))
+      _ <- EitherT.liftF(carsRepository.markAsDeleted(carId))
     } yield ()
     effect.value
   }

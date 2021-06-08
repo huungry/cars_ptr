@@ -37,47 +37,46 @@ final class CarsServiceTest
     deleteFromTable("CARS")
   }
 
-  // CREATE TESTS
+  // GLOBAL VAL
 
-  private val fordBrand        = "ford"
-  private val focusModel       = "focus"
-  private val createCarRequest = CreateCarRequest(fordBrand, focusModel, 100000)
+  private val dbBrand          = "Ford"
+  private val dbModel          = "Focus"
+  private val dbPrice          = 99699L
+  private val createCarRequest = CreateCarRequest(dbBrand, dbModel, dbPrice)
+
+  // CREATE TESTS
 
   it should "create car" in {
     carsService.create(createCarRequest).unsafeRunSync().value
 
-    val models: List[String] = carsRepository.findByBrand(fordBrand).unsafeRunSync().map(_.model)
-    models should contain only focusModel
+    val models: List[String] = carsRepository.findByBrand(dbBrand).unsafeRunSync().map(_.model)
+    models should contain only dbModel
   }
 
   it should "not create car if car already exists" in {
     carsService.create(createCarRequest).unsafeRunSync().value
-    carsRepository.findByBrand(fordBrand).unsafeRunSync().length shouldBe 1
+    carsRepository.findByBrand(dbBrand).unsafeRunSync().length shouldBe 1
 
     carsService.create(createCarRequest).unsafeRunSync().left.value
   }
 
   // UPDATE TESTS
 
-  private val fordUpdated      = Some("FordUpdated")
-  private val focusUpdated     = None
-  private val priceUpdated     = Some(999L)
-  private val updateCarRequest = UpdateCarRequest(fordUpdated, focusUpdated, priceUpdated)
+  private val dbBrandUpdated   = Some("FordUpdated")
+  private val dbModelUpdated   = None
+  private val dbPriceUpdated   = Some(999L)
+  private val updateCarRequest = UpdateCarRequest(dbBrandUpdated, dbModelUpdated, dbPriceUpdated)
 
   it should "update car" in {
 
     carsService.create(createCarRequest).unsafeRunSync().value
 
-    val dbBrand = createCarRequest.brand
-    val dbModel = createCarRequest.model
-    val dbPrice = createCarRequest.price
-
     val id: CarId =
       carsRepository
-        .findByBrandAndModel(fordBrand, focusModel)
+        .findByBrandAndModel(dbBrand, dbModel)
         .unsafeRunSync()
-        .map(_.id)
         .value
+        .id
 
     carsService.update(id, updateCarRequest).unsafeRunSync().value
 
@@ -101,14 +100,14 @@ final class CarsServiceTest
 
     val id: CarId =
       carsRepository
-        .findByBrandAndModel(fordBrand, focusModel)
+        .findByBrandAndModel(dbBrand, dbModel)
         .unsafeRunSync()
-        .map(_.id)
         .value
+        .id
 
     carsService.delete(id).unsafeRunSync().value
 
-    carsRepository.findCar(id).unsafeRunSync().getOrElse("None") shouldBe "None"
+    carsRepository.findCar(id).unsafeRunSync() shouldBe None
   }
 
 }
