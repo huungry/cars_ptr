@@ -16,8 +16,7 @@ import com.hungry.cars.domain.error.UserError.UserAlreadyExists
 import com.hungry.cars.domain.error.UserError.UsernameHasSpecialCharacters
 import com.hungry.cars.http.in.CreateUserRequest
 import doobie.implicits.legacy.instant._
-
-final case class RegistrationData(username: String, password: String, firstName: String, lastName: String, age: Int)
+import com.hungry.cars.http.in.RegistrationData
 
 class UserService(userRepository: UserRepository) {
 
@@ -26,7 +25,6 @@ class UserService(userRepository: UserRepository) {
     type ValidationResult[A] = ValidatedNec[UserError, A]
 
     private def validateUserNameIO(userName: String): IO[ValidationResult[String]] = {
-
       if (userName.matches("^[a-zA-Z0-9]+$")) {
         for {
           maybeUser: Option[User] <- userRepository.doesUsernameExists(userName).map(_.headOption)
