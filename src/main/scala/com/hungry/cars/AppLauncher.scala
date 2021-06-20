@@ -5,13 +5,20 @@ import cats.effect.IO
 import cats.effect.IOApp
 import cats.effect.Resource
 import cats.effect._
+import cats.implicits.toSemigroupKOps
 import com.hungry.cars.db.repository.{CarsRepository, CarsRepositoryDoobie}
 import com.hungry.cars.http.routes.CarsRoutes
 import com.hungry.cars.services.CarsService
 import com.hungry.cars.db.repository.CarsRepositoryDoobie
+import com.hungry.cars.db.repository.UserRepository
+import com.hungry.cars.db.repository.UserRepositoryDoobie
+import com.hungry.cars.http.routes.UserRoutes
+import com.hungry.cars.services.UserService
 import doobie._
 import doobie.hikari._
 import org.http4s.HttpApp
+import org.http4s.HttpRoutes
+import org.http4s.implicits.http4sKleisliResponseSyntaxOptionT
 import org.http4s.server.blaze.BlazeServerBuilder
 
 import scala.concurrent.ExecutionContext.global
@@ -46,8 +53,21 @@ object AppLauncher extends IOApp {
     transactor.use { xa: HikariTransactor[IO] =>
       val carsRepository: CarsRepository = new CarsRepositoryDoobie(xa)
       val carsService: CarsService       = new CarsService(carsRepository)
-      val carsRoutes: HttpApp[IO]        = new CarsRoutes(carsService).routes
-      server(carsRoutes)
+      val carsRoutes: HttpRoutes[IO]     = new CarsRoutes(carsService).routes
+
+      val userRepository: UserRepository = new UserRepositoryDoobie(xa)
+      val userService: UserService       = new UserService(userRepository)
+      val userRoutes: HttpRoutes[IO]     = new UserRoutes(userService).routes
+
+      val allRoutes: HttpRoutes[IO] = {
+        carsRoutes <+> userRoutes
+      }
+
+      val allRoutesCompleted: HttpApp[IO] = {
+        allRoutes.orNotFound
+      }
+
+      server(allRoutesCompleted)
     }
   }
 
