@@ -13,7 +13,6 @@ trait UserRepository {
 class UserRepositoryDoobie(xa: Transactor[IO]) extends UserRepository {
 
   override def findByUsername(username: String): IO[List[User]] = {
-    println(s" USERNAME: $username repo here dosUsernameExists")
     sql"""
       SELECT
       ID, USERNAME, PASSWORD, FIRSTNAME, LASTNAME, AGE
