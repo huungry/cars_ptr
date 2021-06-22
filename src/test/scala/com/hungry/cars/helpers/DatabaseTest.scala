@@ -15,7 +15,7 @@ trait DatabaseTest { this: TestSuite =>
 
   val testTransactor: Transactor[IO] = Transactor.fromDriverManager[IO](
     "org.postgresql.Driver", // driver classname
-    "jdbc:postgresql:cars", // connect URL
+    "jdbc:postgresql:cars_testing", // connect URL
     "kamil", // username
     "password", // password
     Blocker.liftExecutionContext(ExecutionContexts.synchronous)
