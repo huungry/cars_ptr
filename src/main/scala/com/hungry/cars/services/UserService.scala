@@ -26,7 +26,7 @@ class UserService(userRepository: UserRepository) {
     private def validateUserNameIO(userName: String): IO[ValidationResult[String]] = {
       if (userName.matches("^[a-zA-Z0-9]+$")) {
         for {
-          maybeUser: Option[User] <- userRepository.doesUsernameExists(userName).map(_.headOption)
+          maybeUser: Option[User] <- userRepository.findByUsername(userName).map(_.headOption)
           res: ValidationResult[String] = maybeUser match {
                                             case Some(_) => UserAlreadyExists.invalidNec
                                             case None    => userName.validNec

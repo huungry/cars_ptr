@@ -7,12 +7,12 @@ import doobie.implicits._
 import doobie.implicits.legacy.instant._
 
 trait UserRepository {
-  def doesUsernameExists(username: String): IO[List[User]]
+  def findByUsername(username: String): IO[List[User]]
 }
 
 class UserRepositoryDoobie(xa: Transactor[IO]) extends UserRepository {
 
-  override def doesUsernameExists(username: String): IO[List[User]] = {
+  override def findByUsername(username: String): IO[List[User]] = {
     println(s" USERNAME: $username repo here dosUsernameExists")
     sql"""
       SELECT
