@@ -16,7 +16,6 @@ import com.hungry.cars.domain.error.UserError.UserAlreadyExists
 import com.hungry.cars.domain.error.UserError.UsernameHasSpecialCharacters
 import com.hungry.cars.http.in.CreateUserRequest
 import doobie.implicits.legacy.instant._
-import com.hungry.cars.http.in.RegistrationData
 
 class UserService(userRepository: UserRepository) {
 
@@ -49,16 +48,16 @@ class UserService(userRepository: UserRepository) {
     private def validateAge(age: Int): ValidationResult[Int] =
       if (age >= 18 && age <= 75) age.validNec else AgeIsInvalid.invalidNec
 
-    def validateForm(createUserRequest: CreateUserRequest): IO[Either[NonEmptyChain[UserError], RegistrationData]] =
+    def validateForm(createUserRequest: CreateUserRequest): IO[Either[NonEmptyChain[UserError], CreateUserRequest]] =
       for {
         validateUserName: ValidationResult[String] <- validateUserNameIO(createUserRequest.username)
-        x: Either[NonEmptyChain[UserError], RegistrationData] = (
-                                                                  validateUserName,
-                                                                  validatePassword(createUserRequest.password),
-                                                                  validateFirstName(createUserRequest.firstName),
-                                                                  validateLastName(createUserRequest.lastName),
-                                                                  validateAge(createUserRequest.age)
-                                                                ).mapN(RegistrationData).toEither
+        x: Either[NonEmptyChain[UserError], CreateUserRequest] = (
+                                                                   validateUserName,
+                                                                   validatePassword(createUserRequest.password),
+                                                                   validateFirstName(createUserRequest.firstName),
+                                                                   validateLastName(createUserRequest.lastName),
+                                                                   validateAge(createUserRequest.age)
+                                                                 ).mapN(CreateUserRequest).toEither
       } yield x
 
   }
