@@ -23,7 +23,8 @@ libraryDependencies ++= Seq(
   "ch.qos.logback"          % "logback-classic"          % "1.1.3" % Runtime,
   "org.postgresql"          % "postgresql"               % "9.3-1102-jdbc41",
   "org.scalatest"          %% "scalatest"                % "3.2.3",
-  "org.reactormonk"        %% "cryptobits"               % "1.3"
+  "org.reactormonk"        %% "cryptobits"               % "1.3",
+  "com.github.t3hnar"      %% "scala-bcrypt"             % "4.3.0"
 )
 
 addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.0")

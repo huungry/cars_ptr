@@ -9,11 +9,10 @@ import com.hungry.cars.domain.error.CarsError._
 import com.hungry.cars.http.in.CreateCarRequest
 import com.hungry.cars.http.in.UpdateCarRequest
 import com.hungry.cars.services.CarsService
-import org.http4s.circe.CirceEntityCodec.circeEntityEncoder
-import org.http4s.circe._
 import org.http4s.EntityDecoder
 import org.http4s.HttpRoutes
-
+import org.http4s.circe.CirceEntityCodec.circeEntityEncoder
+import org.http4s.circe._
 import org.http4s.dsl.io._
 
 class CarsRoutes(carsService: CarsService)(implicit cs: ContextShift[IO], timer: Timer[IO]) {

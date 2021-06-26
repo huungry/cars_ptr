@@ -1,33 +1,21 @@
 package com.hungry.cars.http.in
 
-import com.hungry.cars.domain.User
-import com.hungry.cars.domain.UserId
+import io.circe.Decoder
 import io.circe.Encoder
-import io.circe.Json
-import io.circe.syntax.EncoderOps
+import io.circe.generic.semiauto.deriveDecoder
+import io.circe.generic.semiauto.deriveEncoder
 
-case class CreateUserRequest(username: String, password: String, firstName: String, lastName: String, age: Int) {
+case class CreateUserRequest(
+  username: String,
+  email: String,
+  password: String,
+  passwordRepeat: String,
+  firstName: String,
+  lastName: String,
+  age: Int
+)
 
-  def toUser: User = User(
-    id        = UserId.generate,
-    username  = username,
-    password  = password,
-    firstName = firstName,
-    lastName  = lastName,
-    age       = age
-  )
-
-  private def toJson(createUserRequest: CreateUserRequest): Json = {
-    Map(
-      "username"  -> createUserRequest.username,
-      "password"  -> createUserRequest.password,
-      "firstName" -> createUserRequest.firstName,
-      "lastname"  -> createUserRequest.lastName,
-      "age"       -> createUserRequest.age.toString
-    ).asJson
-  }
-
-  implicit val createUserRequestEncoder: Encoder[CreateUserRequest] = (createUserRequest: CreateUserRequest) =>
-    toJson(createUserRequest)
-
+object CreateUserRequest {
+  implicit val createUserEncoder: Encoder[CreateUserRequest] = deriveEncoder[CreateUserRequest]
+  implicit val createUserDecoder: Decoder[CreateUserRequest] = deriveDecoder[CreateUserRequest]
 }

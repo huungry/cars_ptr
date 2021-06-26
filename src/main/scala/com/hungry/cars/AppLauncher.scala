@@ -5,14 +5,14 @@ import cats.effect.IO
 import cats.effect.IOApp
 import cats.effect.Resource
 import cats.effect._
-import cats.implicits.toSemigroupKOps
-import com.hungry.cars.db.repository.{CarsRepository, CarsRepositoryDoobie}
-import com.hungry.cars.http.routes.CarsRoutes
-import com.hungry.cars.services.CarsService
+import cats.syntax.semigroupk._
+import com.hungry.cars.db.repository.CarsRepository
 import com.hungry.cars.db.repository.CarsRepositoryDoobie
 import com.hungry.cars.db.repository.UserRepository
 import com.hungry.cars.db.repository.UserRepositoryDoobie
+import com.hungry.cars.http.routes.CarsRoutes
 import com.hungry.cars.http.routes.UserRoutes
+import com.hungry.cars.services.CarsService
 import com.hungry.cars.services.UserService
 import doobie._
 import doobie.hikari._

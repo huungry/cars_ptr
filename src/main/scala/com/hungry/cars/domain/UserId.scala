@@ -9,10 +9,5 @@ case class UserId(value: String) extends AnyVal
 
 object UserId {
 
-  def generate: UserId = {
-    val uuid = UUID.randomUUID().toString
-    UserId(uuid)
-  }
-
   implicit val userIdCodec: Codec[UserId] = deriveUnwrappedCodec[UserId]
 }
