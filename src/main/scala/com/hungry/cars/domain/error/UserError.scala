@@ -3,9 +3,6 @@ package com.hungry.cars.domain.error
 import io.circe.Encoder
 import io.circe.Json
 import io.circe.syntax.EncoderOps
-import io.circe.generic.auto._
-import io.circe.generic.semiauto.deriveEncoder
-import io.circe.syntax._
 
 sealed trait UserError {
   def code: String
