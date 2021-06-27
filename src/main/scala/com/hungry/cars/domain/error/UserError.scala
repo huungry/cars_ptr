@@ -35,7 +35,7 @@ object UserError {
     def code: String = "user-error-005"
 
     def errorMessage: String =
-      "Password must be at least 10 characters long, including an uppercase and a lowercase letter, one number and one special character."
+      "Password must be at least 8 characters long, including an uppercase, a lowercase letter and one number."
   }
 
   case object PasswordsAreNotIdentical extends UserError {
