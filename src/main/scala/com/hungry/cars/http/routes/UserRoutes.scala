@@ -4,7 +4,7 @@ import cats.data._
 import cats.effect.ContextShift
 import cats.effect.IO
 import cats.effect.Timer
-import com.hungry.cars.domain.User
+import com.hungry.cars.domain.ValidatedCreateUserRequest
 import com.hungry.cars.domain.error.UserError
 import com.hungry.cars.domain.error.UserError.userErrorEncoder
 import com.hungry.cars.http.in.CreateUserRequest
@@ -27,8 +27,8 @@ class UserRoutes(userService: UserService)(implicit cs: ContextShift[IO], timer:
         for {
           createUserRequest <- req.as[CreateUserRequest]
           response <-
-            userService.validateForm(createUserRequest).flatMap {
-              either: Either[NonEmptyChain[UserError], CreateUserRequest] =>
+            userService.createUser(createUserRequest).flatMap {
+              either: Either[NonEmptyChain[UserError], ValidatedCreateUserRequest] =>
                 either match {
                   case Left(userError: NonEmptyChain[UserError]) => Conflict(userError)
                   case Right(_)                                  => Ok()

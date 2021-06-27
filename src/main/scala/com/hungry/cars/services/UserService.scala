@@ -3,19 +3,20 @@ package com.hungry.cars.services
 import cats.data.NonEmptyChain
 import cats.data.ValidatedNec
 import cats.effect.IO
-import cats.effect.IO
-import cats.implicits.catsSyntaxTuple7Semigroupal
+import cats.implicits.catsSyntaxTuple6Semigroupal
 import cats.implicits.catsSyntaxValidatedIdBinCompat0
 import com.github.t3hnar.bcrypt._
 import com.hungry.cars.db.repository.UserRepository
 import com.hungry.cars.domain.User
 import com.hungry.cars.domain.UserId
+import com.hungry.cars.domain.ValidatedCreateUserRequest
 import com.hungry.cars.domain.error.UserError
 import com.hungry.cars.domain.error.UserError.AgeIsInvalid
 import com.hungry.cars.domain.error.UserError.EmailAlreadyExists
 import com.hungry.cars.domain.error.UserError.EmailIsNotValid
 import com.hungry.cars.domain.error.UserError.FirstNameHasSpecialCharacters
 import com.hungry.cars.domain.error.UserError.LastNameHasSpecialCharacters
+import com.hungry.cars.domain.error.UserError.PasswordCanNotEncrypt
 import com.hungry.cars.domain.error.UserError.PasswordDoesNotMeetCriteria
 import com.hungry.cars.domain.error.UserError.PasswordsAreNotIdentical
 import com.hungry.cars.domain.error.UserError.UserAlreadyExists
@@ -76,14 +77,33 @@ class UserService(userRepository: UserRepository) {
     }
   }
 
-  private def validatePassword(password: String): ValidationResult[String] =
+  private def validatePassword(password: String, passwordRepeat: String): ValidationResult[String] =
     password match {
-      case passwordCharactersRegex(_*) => password.validNec
-      case _                           => PasswordDoesNotMeetCriteria.invalidNec
+      case passwordCharactersRegex(_*) =>
+        if (passwordRepeat == password) {
+          validateEncryptedPassword(password, maybeEncryptPassword(password)) match {
+            case Left(_)                  => PasswordCanNotEncrypt.invalidNec
+            case Right(encryptedPassword) => encryptedPassword.validNec
+          }
+        } else PasswordsAreNotIdentical.invalidNec
+      case _ => PasswordDoesNotMeetCriteria.invalidNec
     }
 
-  private def validatePasswordRepeat(password: String, passwordRepeat: String): ValidationResult[String] =
-    if (passwordRepeat == password) password.validNec else PasswordsAreNotIdentical.invalidNec
+  private def maybeEncryptPassword(password: String): Try[String] = password.bcryptSafeBounded
+
+  private def validateEncryptedPassword(
+    password: String,
+    maybeEncryptedPassword: Try[String]
+  ): Either[UserError, String] = {
+    maybeEncryptedPassword match {
+      case Success(encryptedPassword) =>
+        password.isBcryptedSafeBounded(encryptedPassword) match {
+          case Success(true) => Right(encryptedPassword)
+          case Failure(_)    => Left(UserError.PasswordCanNotEncrypt)
+        }
+      case Failure(_) => Left(UserError.PasswordCanNotEncrypt)
+    }
+  }
 
   private def validateFirstName(firstName: String): ValidationResult[String] =
     firstName match {
@@ -105,53 +125,35 @@ class UserService(userRepository: UserRepository) {
     UserId(uuid)
   }
 
-  private def maybeEncryptPassword(password: String): Try[String] = password.bcryptSafeBounded
-
-  private def validateEncryptedPassword(password: String, maybeEncryptedPassword: Try[String]): Boolean = {
-    maybeEncryptedPassword match {
-      case Success(encryptedPassword) =>
-        password.isBcryptedSafeBounded(encryptedPassword) match {
-          case Success(true) => true
-          case Failure(_)    => false
-        }
-      case Failure(_) => false
-    }
-  }
-
-  private def toUser(userId: UserId, encryptedPassword: String, createUserRequest: CreateUserRequest): User = {
-    val CreateUserRequest(username, email, _, _, firstName, lastName, age) = createUserRequest
+  private def toUser(userId: UserId, validatedCreateUserRequest: ValidatedCreateUserRequest): User = {
+    val ValidatedCreateUserRequest(username, email, encryptedPassword, firstName, lastName, age) =
+      validatedCreateUserRequest
     User(userId, username, email, encryptedPassword, firstName, lastName, age)
   }
 
-  def validateForm(createUserRequest: CreateUserRequest): IO[Either[NonEmptyChain[UserError], CreateUserRequest]] = {
+  def createUser(
+    createUserRequest: CreateUserRequest
+  ): IO[Either[NonEmptyChain[UserError], ValidatedCreateUserRequest]] = {
 
     val CreateUserRequest(username, email, password, passwordRepeat, firstName, lastName, age) = createUserRequest
 
     for {
       validateUserName: ValidationResult[String] <- validateUserNameIO(username)
       validateEmail: ValidationResult[String]    <- validateEmailIO(email)
-      x: Either[NonEmptyChain[UserError], CreateUserRequest] =
+      x: Either[NonEmptyChain[UserError], ValidatedCreateUserRequest] =
         (
           validateUserName,
           validateEmail,
-          validatePassword(password),
-          validatePasswordRepeat(password, passwordRepeat),
+          validatePassword(password, passwordRepeat),
           validateFirstName(firstName),
           validateLastName(lastName),
           validateAge(age)
-        ).mapN(CreateUserRequest.apply).toEither
-      maybeEncryptedPassword: Try[String] = maybeEncryptPassword(password)
-      isEncryptedPasswordValid: Boolean   = validateEncryptedPassword(password, maybeEncryptedPassword)
-      _ = x match {
-            case Right(createUserRequest: CreateUserRequest) =>
-              if (isEncryptedPasswordValid) maybeEncryptedPassword match {
-                case Success(encryptedPassword) =>
-                  userRepository.create(toUser(generateUserId, encryptedPassword, createUserRequest))
-                  println(toUser(generateUserId, encryptedPassword, createUserRequest))
-                case Failure(_) => IO.pure(())
-              }
-            case Left(_) => IO.pure(())
-          }
+        ).mapN(ValidatedCreateUserRequest).toEither
+      _ <- x match {
+             case Right(validatedCreateUserRequest: ValidatedCreateUserRequest) =>
+               userRepository.create(toUser(generateUserId, validatedCreateUserRequest))
+             case Left(_) => IO.pure(())
+           }
     } yield x
   }
 }
